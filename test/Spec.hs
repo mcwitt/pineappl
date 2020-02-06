@@ -2,16 +2,18 @@
 import           Test.Hspec
 
 import           Control.Monad                  ( guard )
+import           Data.Bifunctor                 ( second )
+import           Data.Complex
 import           Data.Ratio
 import           Pineappl                       ( WrappedBDDist(BDDist)
                                                 , Prob(P)
+                                                , LogProb(LP)
                                                 , factor
                                                 , bddist
                                                 , sample
                                                 , hist
                                                 , runBDDist
                                                 , uniform
-                                                , bernoulli
                                                 )
 
 main :: IO ()
@@ -78,7 +80,8 @@ main = hspec $ do
 
   describe "Bayes theorem" $ do
     it "should get correct answer for testing problem"
-      $ let br  = P (1 % 200)  -- P(+); base rate
+      $ let bernoulli p = bddist [(True, p), (False, 1 - p)]
+            br  = P (1 % 200)  -- P(+); base rate
             fnr = P (1 % 100)  -- P(-|+); false negative rate
             fpr = P (1 % 100)  -- P(+|-); false positive rate
             pr  = (1 - fnr) * br / ((1 - fnr) * br + fpr * (1 - br))
@@ -90,3 +93,20 @@ main = hspec $ do
                   return pos
                 )
               `shouldBe` bernoulli pr
+
+  describe "Quantum mechanics" $ do
+    it "should get correct answer for double-slit experiment"
+      $ let
+          ampl y = LP $ exp (i * ds)
+           where
+            i  = 0 :+ 1
+            ds = sqrt $ 1 + fromIntegral y ^ 2
+          totalAmpl = runBDDist $ BDDist
+            (do
+              slit <- sample $ bddist [ (y, ampl y) | y <- [-1,  1] ]
+              sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
+            )
+          prob = bddist
+            $ fmap (second (\(LP psi) -> P (magnitude psi ^ 2))) totalAmpl
+        in
+          prob `shouldBe` bddist []
