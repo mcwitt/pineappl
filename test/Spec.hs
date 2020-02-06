@@ -3,6 +3,11 @@ import           Test.Hspec
 
 import           Data.Bifunctor                 ( second )
 import           Data.Complex
+import           Data.List                      ( sortBy
+                                                , maximumBy
+                                                , sortOn
+                                                )
+import           Data.Ord                       ( compare )
 import           Data.Ratio
 import           Pineappl                       ( WrappedBDDist(BDDist)
                                                 , Prob(P)
@@ -97,13 +102,44 @@ main = hspec $ do
 
   describe "Quantum mechanics" $ do
     it "should get correct answer for double-slit experiment"
-      $ let ampl y = LP $ exp (i * ds)
-             where
-              i  = 0 :+ 1
-              ds = sqrt $ 1 + fromIntegral y ^ 2
-            outcome = BDDist
-              (do
-                slit <- sample $ bddist [ (y, ampl y) | y <- [-1, 1] ]
-                sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
-              )
-        in  observe outcome `shouldBe` bddist []
+      $ let
+          ampl y = LP $ exp (i * ds)
+           where
+            i  = 0 :+ 1
+            ds = sqrt $ 1 + fromIntegral y ^ 2
+          outcome = BDDist
+            (do
+              slit <- sample $ bddist [ (y, ampl y) | y <- [-1, 1] ]
+              sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
+            )
+          intensity = runBDDist $ observe outcome
+          sorted =
+            fmap snd
+              . sortBy (flip compare)
+              . fmap (\(a, b) -> (b, a))
+              $ intensity
+        in
+          {- Looks like:
+              -10 | #
+              -9 | ####
+              -8 | ######
+              -7 | ######
+              -6 | ###
+              -5 | #
+              -4 | 
+              -3 | ###
+              -2 | ######
+              -1 | #########
+               0 | ###########
+               1 | #########
+               2 | ######
+               3 | ###
+               4 | 
+               5 | #
+               6 | ###
+               7 | ######
+               8 | ######
+               9 | ####
+              10 | # -}
+          take 5 sorted `shouldBe` [0, 1, -1, 8, -8]
+

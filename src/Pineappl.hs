@@ -26,7 +26,7 @@ import           Data.Maybe                     ( catMaybes )
 import           Data.Ratio                     ( (%) )
 import           Text.Printf
 
-newtype Prob a = P a deriving (Fractional, Num, Eq, Show)
+newtype Prob a = P a deriving (Fractional, Num, Ord, Eq, Show)
 
 instance Num a => Semigroup (Prob a) where
   (<>) = (*)
