@@ -5,10 +5,12 @@
 module Pineappl
   ( Prob(P)
   , LogProb(LP)
+  , BDDist
   , WrappedBDDist(BDDist)
   , bddist
   , factor
   , sample
+  , condition
   , hist
   , runBDDist
   , uniform
@@ -17,7 +19,7 @@ where
 
 import           Control.Monad.Writer
 import           Control.Monad.Trans.Maybe
-import Data.Complex
+import           Data.Complex
 import           Data.Map                       ( Map )
 import qualified Data.Map                      as M
 import           Data.Maybe                     ( catMaybes )
@@ -51,6 +53,10 @@ sample = unwrapBDDist
 -- | Alias for 'tell'
 factor :: Monoid a => Num a => a -> BDDist a ()
 factor = tell
+
+-- | Alias for 'guard'
+condition :: Monoid a => Bool -> BDDist a ()
+condition = guard
 
 instance (Eq a, Fractional a, Ord b) => Eq (WrappedBDDist a b) where
   d1 == d2 = mkHist d1 == mkHist d2 where mkHist = hist . runBDDist

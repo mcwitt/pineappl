@@ -1,20 +1,21 @@
 {-# LANGUAGE TupleSections #-}
 import           Test.Hspec
 
-import           Control.Monad                  ( guard )
 import           Data.Bifunctor                 ( second )
 import           Data.Complex
 import           Data.Ratio
 import           Pineappl                       ( WrappedBDDist(BDDist)
                                                 , Prob(P)
                                                 , LogProb(LP)
-                                                , factor
                                                 , bddist
+                                                , factor
                                                 , sample
+                                                , condition
                                                 , hist
                                                 , runBDDist
                                                 , uniform
                                                 )
+import           Pineappl.Quantum               ( observe )
 
 main :: IO ()
 main = hspec $ do
@@ -89,24 +90,20 @@ main = hspec $ do
                 (do
                   pos     <- sample $ bernoulli br
                   testPos <- sample . bernoulli $ if pos then 1 - fpr else fnr
-                  guard testPos
+                  condition testPos
                   return pos
                 )
               `shouldBe` bernoulli pr
 
   describe "Quantum mechanics" $ do
     it "should get correct answer for double-slit experiment"
-      $ let
-          ampl y = LP $ exp (i * ds)
-           where
-            i  = 0 :+ 1
-            ds = sqrt $ 1 + fromIntegral y ^ 2
-          totalAmpl = runBDDist $ BDDist
-            (do
-              slit <- sample $ bddist [ (y, ampl y) | y <- [-1,  1] ]
-              sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
-            )
-          prob = bddist
-            $ fmap (second (\(LP psi) -> P (magnitude psi ^ 2))) totalAmpl
-        in
-          prob `shouldBe` bddist []
+      $ let ampl y = LP $ exp (i * ds)
+             where
+              i  = 0 :+ 1
+              ds = sqrt $ 1 + fromIntegral y ^ 2
+            outcome = BDDist
+              (do
+                slit <- sample $ bddist [ (y, ampl y) | y <- [-1, 1] ]
+                sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
+              )
+        in  observe outcome `shouldBe` bddist []
