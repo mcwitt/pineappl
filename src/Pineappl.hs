@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Pineappl
@@ -5,41 +6,52 @@ module Pineappl
   , FDist(FDist)
   , fdist
   , factor
-  , fsample
+  , sample
   , hist
   , runFDist
+  , uniform
+  , bernoulli
   )
 where
 
 import           Control.Monad.Writer
+import           Control.Monad.Trans.Maybe
 import           Data.Map                       ( Map )
 import qualified Data.Map                      as M
+import           Data.Maybe                     ( catMaybes )
+import           Data.Ratio                     ( (%) )
 import           Text.Printf
 
 newtype Prob a = P a deriving (Ord, Real, Fractional, RealFrac, Num, Eq, Show)
 
 instance Num a => Semigroup (Prob a) where
-  P p <> P q = P (p * q)
+  (<>) = (*)
 
 instance Num a => Monoid (Prob a) where
-  mempty = P 1
+  mempty = 1
 
-newtype FDist a b = FDist { fsample :: WriterT (Prob a) [] b }
+newtype FDist a b = FDist { sample :: WriterT (Prob a) (MaybeT []) b }
 
-factor :: RealFrac a => Prob a -> WriterT (Prob a) [] ()
+factor :: RealFrac a => Prob a -> WriterT (Prob a) (MaybeT []) ()
 factor = tell
 
 instance (Eq a, RealFrac a, Ord b) => Eq (FDist a b) where
-  d1 == d2 = fn d1 == fn d2 where fn = hist . runFDist
+  d1 == d2 = mkHist d1 == mkHist d2 where mkHist = hist . runFDist
 
 fdist :: Ord b => [(b, Prob a)] -> FDist a b
-fdist = FDist . WriterT
+fdist = FDist . WriterT . MaybeT . fmap Just
+
+uniform :: (Num a, Ord b) => [b] -> FDist a b
+uniform xs = fdist $ fmap (, P 1) xs
+
+bernoulli :: Num a => Prob a -> FDist a Bool
+bernoulli p = fdist [(True, p), (False, 1 - p)]
 
 runFDist :: FDist a b -> [(b, Prob a)]
-runFDist (FDist w) = runWriterT w
+runFDist = catMaybes . runMaybeT . runWriterT . sample
 
 hist :: (Ord a, RealFrac b) => [(a, b)] -> Map a b
-hist ps = fmap (/ norm) unnormed
+hist ps = fmap (* recip norm) unnormed
  where
   unnormed = M.fromListWith (+) ps
   norm     = sum $ M.elems unnormed
