@@ -3,12 +3,12 @@
 
 module Pineappl
   ( Prob(P)
-  , FDist(FDist)
-  , fdist
+  , WrappedBDDist(BDDist)
+  , bddist
   , factor
   , sample
   , hist
-  , runFDist
+  , runBDDist
   , uniform
   , bernoulli
   )
@@ -30,25 +30,32 @@ instance Num a => Semigroup (Prob a) where
 instance Num a => Monoid (Prob a) where
   mempty = 1
 
-newtype FDist a b = FDist { sample :: WriterT (Prob a) (MaybeT []) b }
+type BDDist a b = WriterT (Prob a) (MaybeT []) b
 
-factor :: RealFrac a => Prob a -> WriterT (Prob a) (MaybeT []) ()
+newtype WrappedBDDist a b = BDDist { unwrapBDDist :: BDDist a b }
+
+-- | Alias for 'unwrapBDDist'
+sample :: WrappedBDDist a b -> BDDist a b
+sample = unwrapBDDist
+
+-- | Alias for 'tell'
+factor :: Num a => Prob a -> BDDist a ()
 factor = tell
 
-instance (Eq a, RealFrac a, Ord b) => Eq (FDist a b) where
-  d1 == d2 = mkHist d1 == mkHist d2 where mkHist = hist . runFDist
+instance (Eq a, RealFrac a, Ord b) => Eq (WrappedBDDist a b) where
+  d1 == d2 = mkHist d1 == mkHist d2 where mkHist = hist . runBDDist
 
-fdist :: Ord b => [(b, Prob a)] -> FDist a b
-fdist = FDist . WriterT . MaybeT . fmap Just
+bddist :: Ord b => [(b, Prob a)] -> WrappedBDDist a b
+bddist = BDDist . WriterT . MaybeT . fmap Just
 
-uniform :: (Num a, Ord b) => [b] -> FDist a b
-uniform xs = fdist $ fmap (, P 1) xs
+uniform :: (Num a, Ord b) => [b] -> WrappedBDDist a b
+uniform xs = bddist $ fmap (, P 1) xs
 
-bernoulli :: Num a => Prob a -> FDist a Bool
-bernoulli p = fdist [(True, p), (False, 1 - p)]
+bernoulli :: Num a => Prob a -> WrappedBDDist a Bool
+bernoulli p = bddist [(True, p), (False, 1 - p)]
 
-runFDist :: FDist a b -> [(b, Prob a)]
-runFDist = catMaybes . runMaybeT . runWriterT . sample
+runBDDist :: WrappedBDDist a b -> [(b, Prob a)]
+runBDDist = catMaybes . runMaybeT . runWriterT . unwrapBDDist
 
 hist :: (Ord a, RealFrac b) => [(a, b)] -> Map a b
 hist ps = fmap (* recip norm) unnormed
@@ -56,7 +63,7 @@ hist ps = fmap (* recip norm) unnormed
   unnormed = M.fromListWith (+) ps
   norm     = sum $ M.elems unnormed
 
-instance (RealFrac a, Ord b, Show b) => Show (FDist a b) where
+instance (RealFrac a, Ord b, Show b) => Show (WrappedBDDist a b) where
   show =
     unlines
       . fmap
@@ -65,4 +72,4 @@ instance (RealFrac a, Ord b, Show b) => Show (FDist a b) where
           )
       . M.assocs
       . hist
-      . runFDist
+      . runBDDist

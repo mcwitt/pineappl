@@ -3,13 +3,13 @@ import           Test.Hspec
 
 import           Control.Monad                  ( guard )
 import           Data.Ratio
-import           Pineappl                       ( FDist(FDist)
+import           Pineappl                       ( WrappedBDDist(BDDist)
                                                 , Prob(P)
                                                 , factor
-                                                , fdist
+                                                , bddist
                                                 , sample
                                                 , hist
-                                                , runFDist
+                                                , runBDDist
                                                 , uniform
                                                 , bernoulli
                                                 )
@@ -20,8 +20,8 @@ main = hspec $ do
     let fairCoin = uniform [0, 1]
         coinFlip = sample fairCoin
     it "should get correct result for 3 coin flips"
-      $ FDist ((\a b c -> a + b + c) <$> coinFlip <*> coinFlip <*> coinFlip)
-      `shouldBe` fdist
+      $ BDDist ((\a b c -> a + b + c) <$> coinFlip <*> coinFlip <*> coinFlip)
+      `shouldBe` bddist
                    [ (0, P (1 % 8))
                    , (1, P (3 % 8))
                    , (2, P (3 % 8))
@@ -29,14 +29,14 @@ main = hspec $ do
                    ]
 
     it "should get correct result for 3 coin flips (monadic)"
-      $          FDist
+      $          BDDist
                    (do
                      a <- coinFlip
                      b <- coinFlip
                      c <- coinFlip
                      return (a + b + c)
                    )
-      `shouldBe` fdist
+      `shouldBe` bddist
                    [ (0, P (1 % 8))
                    , (1, P (3 % 8))
                    , (2, P (3 % 8))
@@ -44,7 +44,7 @@ main = hspec $ do
                    ]
 
     it "should get correct result for 'funny binomial'"
-      $          FDist
+      $          BDDist
                    (do
                      a <- coinFlip
                      b <- coinFlip
@@ -52,7 +52,7 @@ main = hspec $ do
                      factor $ P (if a + b > 0 then 1 else 1 % 4)
                      return (a + b + c)
                    )
-      `shouldBe` fdist
+      `shouldBe` bddist
                    [ (0, P (1 % 32))
                    , (1, P (9 % 32))
                    , (2, P (3 % 8))
@@ -61,7 +61,7 @@ main = hspec $ do
 
   describe "Monty Hall" $ do
     it "should get correct answer with the switch"
-      $          FDist
+      $          BDDist
                    (do
                      initialChoice <- sample $ uniform [1 .. 3]
                      revealed      <- case initialChoice of
@@ -74,7 +74,7 @@ main = hspec $ do
                        (2, 3) -> return 1
                        (3, 2) -> return 1
                    )
-      `shouldBe` fdist [(1, P (1 % 2)), (2, P (1 % 4)), (3, P (1 % 4))]
+      `shouldBe` bddist [(1, P (1 % 2)), (2, P (1 % 4)), (3, P (1 % 4))]
 
   describe "Bayes theorem" $ do
     it "should get correct answer for testing problem"
@@ -82,7 +82,7 @@ main = hspec $ do
             fnr = P (1 % 100)  -- P(-|+); false negative rate
             fpr = P (1 % 100)  -- P(+|-); false positive rate
             pr  = (1 - fnr) * br / ((1 - fnr) * br + fpr * (1 - br))
-        in  FDist
+        in  BDDist
                 (do
                   pos     <- sample $ bernoulli br
                   testPos <- sample . bernoulli $ if pos then 1 - fpr else fnr
