@@ -84,9 +84,9 @@ main = hspec $ do
       `shouldBe` bddist [(1, P (1 % 2)), (2, P (1 % 4)), (3, P (1 % 4))]
 
   describe "Bayes theorem" $ do
+    let bernoulli p = bddist [(True, p), (False, 1 - p)]
     it "should get correct answer for testing problem"
-      $ let bernoulli p = bddist [(True, p), (False, 1 - p)]
-            br  = P (1 % 200)  -- P(+); base rate
+      $ let br  = P (1 % 200)  -- P(+); base rate
             fnr = P (1 % 100)  -- P(-|+); false negative rate
             fpr = P (1 % 100)  -- P(+|-); false positive rate
             pr  = (1 - fnr) * br / ((1 - fnr) * br + fpr * (1 - br))
@@ -98,6 +98,25 @@ main = hspec $ do
                   return pos
                 )
               `shouldBe` bernoulli pr
+
+    it "should get correct answer for traffic problem"
+      $ let president = bernoulli $ P (1 % 100)
+            accident  = bernoulli $ P (1 % 10)
+            traffic p a = bernoulli . P $ case (p, a) of
+              (False, False) -> 1 % 10
+              (False, True ) -> 1 % 2
+              (True , False) -> 3 % 5
+              (True , True ) -> 9 % 10
+            joint = do
+              p <- sample president
+              a <- sample accident
+              t <- sample $ traffic p a
+              return (p, a, t)
+        in  do
+              BDDist (joint >>= \(p, a, t) -> condition t >> return a)
+                `shouldBe` bernoulli (P (8 % 23))
+              BDDist (joint >>= \(p, a, t) -> condition (t && p) >> return a)
+                `shouldBe` bernoulli (P (1 % 7))
 
   describe "Quantum mechanics" $ do
     it "should get correct answer for double-slit experiment"
