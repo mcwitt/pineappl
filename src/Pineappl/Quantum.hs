@@ -11,11 +11,11 @@ import           Pineappl                       ( runBDDist
                                                 , WrappedBDDist
                                                 )
 
-observe
+fromAmplitude
   :: (RealFloat a, Ord b)
   => WrappedBDDist (LogProb (Complex a)) b
   -> WrappedBDDist (Prob a) b
-observe =
+fromAmplitude =
   bddist
     . fmap (second (\(LP psi) -> P (magnitude psi ^ 2)))
     . M.toList

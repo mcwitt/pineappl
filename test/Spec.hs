@@ -19,7 +19,7 @@ import           Pineappl                       ( WrappedBDDist(BDDist)
                                                 , runBDDist
                                                 , uniform
                                                 )
-import           Pineappl.Quantum               ( observe )
+import           Pineappl.Quantum               ( fromAmplitude )
 
 main :: IO ()
 main = hspec $ do
@@ -130,7 +130,7 @@ main = hspec $ do
               slit <- sample $ bddist [ (y, ampl y) | y <- [-1, 1] ]
               sample $ bddist [ (y, ampl (y - slit)) | y <- [-10 .. 10] ]
             )
-          intensity = runBDDist $ observe outcome
+          intensity = runBDDist $ fromAmplitude outcome
           sorted =
             fmap snd
               . sortBy (flip compare)
