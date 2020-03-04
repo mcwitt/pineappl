@@ -24,7 +24,11 @@ dependencies:
 - mtl
 - containers
 - transformers
+- random
 - hspec
+
+ghc-options:
+  -fwarn-incomplete-patterns
 
 library:
   source-dirs: src
