@@ -29,6 +29,8 @@ dependencies:
 
 ghc-options:
   -fwarn-incomplete-patterns
+  -fwarn-unused-binds
+  -fwarn-unused-imports
 
 library:
   source-dirs: src

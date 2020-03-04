@@ -3,11 +3,12 @@ module Pineappl.Quantum where
 import           Data.Bifunctor
 import           Data.Complex
 import qualified Data.Map                      as M
-import           Pineappl                       ( runBDDist
+import           Pineappl                       ( Prob(P)
+                                                , LogProb(LP)
+                                                )
+import           Pineappl.Deterministic         ( runBDDist
                                                 , bddist
                                                 , hist
-                                                , Prob(P)
-                                                , LogProb(LP)
                                                 , WrappedBDDist
                                                 )
 
