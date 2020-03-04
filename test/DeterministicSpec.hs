@@ -3,7 +3,7 @@ module DeterministicSpec where
 import           Test.Hspec
 
 import           Data.Complex
-import           Data.List                      ( sortBy)
+import           Data.List                      ( sortBy )
 import           Data.Ord                       ( compare )
 import           Data.Ratio
 import           Pineappl                       ( Prob(P)
@@ -79,25 +79,24 @@ spec = do
                        (1, 3) -> return 2
                        (2, 3) -> return 1
                        (3, 2) -> return 1
-                       _ -> error "oops"
+                       _      -> error "oops"
                    )
       `shouldBe` bddist [(1, P (1 % 2)), (2, P (1 % 4)), (3, P (1 % 4))]
 
   describe "Bayes theorem" $ do
     let bernoulli p = bddist [(True, p), (False, 1 - p)]
-    it "should get correct answer for testing problem"
-      $ let br  = P (1 % 200)  -- P(+); base rate
-            fnr = P (1 % 100)  -- P(-|+); false negative rate
-            fpr = P (1 % 100)  -- P(+|-); false positive rate
-            pr  = (1 - fnr) * br / ((1 - fnr) * br + fpr * (1 - br))
-        in  BDDist
-                (do
-                  pos     <- sample $ bernoulli br
-                  testPos <- sample . bernoulli $ if pos then 1 - fpr else fnr
-                  condition testPos
-                  return pos
-                )
-              `shouldBe` bernoulli pr
+
+    it "should get correct answer for flu testing problem"
+      $          BDDist
+                   (do
+                     hasFlu     <- sample . bernoulli $ P (1 % 10)
+                     testResult <- if hasFlu
+                       then sample . bernoulli $ P (7 % 10)
+                       else sample . bernoulli $ P (1 % 10)
+                     condition testResult
+                     return hasFlu
+                   )
+      `shouldBe` bernoulli (P (7 % 16))
 
     it "should get correct answer for traffic problem"
       $ let president = bernoulli $ P (1 % 100)
